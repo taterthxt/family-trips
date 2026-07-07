@@ -34,6 +34,8 @@ body {
 .header-center { text-align: center; }
 .header-center h1 { font-size: 18px; font-weight: 700; color: #58a6ff; }
 .header-center .subtitle { font-size: 10px; color: #8b949e; margin-top: 2px; }
+.mobile-only { display: none; }
+.desktop-only { display: inline; }
 .header-right { position: absolute; right: 0; font-size: 10px; color: #8b949e; text-align: center; line-height: 1.5; }
 
 /* Progress Bar */
@@ -58,7 +60,7 @@ body {
   <div class="header-left"><span style="font-size:22px;">🏔️</span></div>
   <div class="header-center">
     <h1>Denver Trip — Jul 29 – Aug 5, 2026</h1>
-    <div class="subtitle">Click a day for details • Drag activities to schedule</div>
+    <div class="subtitle"><span class="desktop-only">Click a day for details • Drag activities to schedule</span><span class="mobile-only">Click a day for details</span></div>
   </div>
   <div class="header-right"><div>Christian, Jesse, Kenzie,</div><div>Ben, Ace, Sofia</div></div>
 </div>
@@ -223,6 +225,8 @@ body {
   .header-left { display:none; }
   .header-center h1 { font-size:16px; white-space:normal; }
   .header-center .subtitle { font-size:9px; }
+  .mobile-only { display: inline; }
+  .desktop-only { display: none; }
   .header-right { font-size:9px; }
   .progress-wrapper { margin-bottom:8px; }
   .legend { gap:10px; font-size:8px; justify-content:flex-start; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; margin:6px 0; }

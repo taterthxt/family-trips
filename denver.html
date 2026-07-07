@@ -125,6 +125,7 @@ body {
 /* Potential Activities */
 .potential-activities { width:100%; max-width:1100px; margin-top:14px; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:10px 14px; }
 .potential-activities h3 { font-size:10px; color:#a371f7; margin-bottom:6px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+.activity-instructions { display:none; font-size:9px; color:#8b949e; margin-bottom:8px; }
 .activity-chips { display:flex; flex-wrap:wrap; gap:6px; }
 .activity-chip { background:#1c2128; border:1px dashed #a371f7; border-radius:12px; padding:3px 10px; font-size:9px; color:#c9d1d9; cursor:pointer; transition:background .2s,box-shadow .2s; }
 .activity-chip:hover { background:#231a3d; box-shadow:0 0 8px rgba(163,113,247,.3); }
@@ -206,7 +207,7 @@ body {
 /* Day picker */
 .day-picker-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:300; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; }
 .day-picker-overlay.visible { opacity:1; pointer-events:all; }
-.day-picker { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px; width:90%; max-width:320px; max-height:70vh; overflow-y:auto; }
+.day-picker { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px; width:90%; max-width:320px; max-height:70vh; overflow-y:auto; position:relative; }
 .day-picker h3 { font-size:13px; color:#58a6ff; margin-bottom:12px; text-align:center; }
 .day-picker .day-option { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border:1px solid #30363d; border-radius:6px; margin-bottom:6px; cursor:pointer; }
 .day-picker .day-option:active { background:#1a2332; border-color:#58a6ff; }
@@ -254,6 +255,7 @@ body {
   .comment-name-prompt button { font-size:12px; padding:8px 16px; }
   .potential-activities { max-width:100%; margin-top:12px; }
   .potential-activities h3 { font-size:11px; }
+  .activity-instructions { display:block; font-size:10px; }
   .activity-chip { padding:8px 14px; font-size:12px; min-height:40px; display:flex; align-items:center; }
   .day-picker { max-width:90%; }
   .day-picker .day-option { padding:12px 14px; font-size:13px; }
@@ -281,6 +283,7 @@ body {
 <!-- Potential Activities -->
 <div class="potential-activities">
   <h3>Potential Activities</h3>
+  <div class="activity-instructions">Click an activity to choose a date</div>
   <div class="activity-chips">
     <div class="activity-chip" data-activity="hiking">🥾 Hiking</div>
     <div class="activity-chip" data-activity="bar-hopping">🍺 Bar Hopping</div>
@@ -310,7 +313,13 @@ body {
 
 <!-- Day Picker Modal -->
 <div class="day-picker-overlay" id="day-picker-overlay">
-  <div class="day-picker"><h3 id="day-picker-title"></h3><div id="day-picker-options"></div><div class="cancel-btn" id="day-picker-cancel">Cancel</div></div>
+  <div class="day-picker">
+    <span class="day-picker-close" id="day-picker-close" style="position:absolute;top:10px;right:14px;font-size:16px;color:#8b949e;cursor:pointer;">✕</span>
+    <h3 id="day-picker-title"></h3>
+    <p id="day-picker-desc" style="font-size:10px;color:#8b949e;margin-bottom:12px;text-align:center;"></p>
+    <div id="day-picker-options"></div>
+    <div class="cancel-btn" id="day-picker-cancel">Cancel</div>
+  </div>
 </div>
 
 <!-- Detail Panel -->
@@ -776,9 +785,11 @@ setInterval(async () => {
 // Mobile day picker
 const dpo = document.getElementById('day-picker-overlay');
 document.getElementById('day-picker-cancel').addEventListener('click',()=>dpo.classList.remove('visible'));
+document.getElementById('day-picker-close').addEventListener('click',()=>dpo.classList.remove('visible'));
 dpo.addEventListener('click',e=>{if(e.target===dpo) dpo.classList.remove('visible');});
 function openDayPicker(act) {
-  document.getElementById('day-picker-title').textContent=`Schedule "${act.label}" to:`;
+  document.getElementById('day-picker-title').textContent=act.label;
+  document.getElementById('day-picker-desc').textContent=act.desc;
   const opts = document.getElementById('day-picker-options'); opts.innerHTML='';
   tripDates.forEach(d=>{
     const w=weather[d];

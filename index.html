@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="✈️ Family Trips">
+<meta name="apple-mobile-web-app-title" content="Family Trips">
 <meta name="theme-color" content="#0d1117">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%230d1117' width='180' height='180' rx='40'/><text y='90' x='90' font-size='100' text-anchor='middle' dominant-baseline='central' font-family='Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji'>✈</text></svg>">
 <title>Family Trips — 2026</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -94,6 +93,25 @@ body {
 .trip-card.denver::before { background: #58a6ff; }
 .trip-card.nashville::before { background: #ff69b4; }
 
+/* Flying planes background */
+.planes-container {
+  position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0;
+}
+.plane {
+  position: absolute; font-size: 20px; opacity: 0.08;
+  animation: fly linear infinite;
+}
+@keyframes fly {
+  0% { transform: translateX(-50px) translateY(0); }
+  100% { transform: translateX(calc(100vw + 50px)) translateY(-80px); }
+}
+@keyframes fly-reverse {
+  0% { transform: translateX(calc(100vw + 50px)) translateY(0) scaleX(-1); }
+  100% { transform: translateX(-50px) translateY(-80px) scaleX(-1); }
+}
+
+.page-header, .trip-grid { position: relative; z-index: 1; }
+
 @media (max-width: 768px) {
   .trip-grid { grid-template-columns: 1fr; max-width: 100%; }
   .page-header h1 { font-size: 22px; }
@@ -104,6 +122,8 @@ body {
 </style>
 </head>
 <body>
+
+<div class="planes-container" id="planes-container"></div>
 
 <div class="page-header">
   <h1>✈️ Family Trips — 2026</h1>
@@ -170,6 +190,26 @@ trips.forEach(trip => {
   card.addEventListener('click', () => { window.location.href = trip.url; });
   grid.appendChild(card);
 });
+// Spawn flying planes in background
+const planesContainer = document.getElementById('planes-container');
+function spawnPlane() {
+  const plane = document.createElement('div');
+  plane.className = 'plane';
+  plane.textContent = '✈';
+  const y = Math.random() * 100;
+  const size = 14 + Math.random() * 18;
+  const duration = 12 + Math.random() * 20;
+  const delay = Math.random() * -20;
+  const reverse = Math.random() > 0.5;
+  plane.style.top = y + '%';
+  plane.style.fontSize = size + 'px';
+  plane.style.animationDuration = duration + 's';
+  plane.style.animationDelay = delay + 's';
+  plane.style.animationName = reverse ? 'fly-reverse' : 'fly';
+  plane.style.opacity = 0.04 + Math.random() * 0.06;
+  planesContainer.appendChild(plane);
+}
+for (let i = 0; i < 20; i++) spawnPlane();
 </script>
 </body>
 </html>

@@ -354,9 +354,9 @@ const workSchedules = {
 const rentalDates = ['7/30','7/31','8/1','8/2','8/3','8/4','8/5'];
 const events = {
   '7/29': [
-    {title:'✈️ Ben/Ace: BNA→CLT',time:'2:52pm–5:30pm (2h 38m)',type:'travel',who:['Ben','Ace'],detail:'Nashville to Charlotte.',hrs:[14.87,17.5]},
-    {title:'✈️ Ben/Ace: CLT→DEN',time:'6:32pm–8:17pm (3h 45m)',type:'travel',who:['Ben','Ace'],detail:'Charlotte to Denver. Arrives 8:17pm MT.',hrs:[18.53,20.28]},
-    {title:'✈️ Jesse/Kenzie/Sofia: BNA→DEN',time:'4:50pm–6:50pm (2h 0m)',type:'travel',who:['Jesse','Kenzie','Sofia'],detail:'Direct flight Nashville to Denver.',hrs:[16.83,18.83]}
+    {title:'✈️ Ben/Ace: BNA→CLT',time:'2:52pm–5:30pm (2h 38m)',type:'travel',who:['Ben','Ace'],detail:'Nashville to Charlotte.',hrs:[14.87,17.5],color:'pink'},
+    {title:'✈️ Ben/Ace: CLT→DEN',time:'6:32pm–8:17pm (3h 45m)',type:'travel',who:['Ben','Ace'],detail:'Charlotte to Denver. Arrives 8:17pm MT.',hrs:[18.53,20.28],color:'pink'},
+    {title:'✈️ Jesse/Kenzie/Sofia: BNA→DEN',time:'4:50pm–6:50pm (2h 0m)',type:'travel',who:['Jesse','Kenzie','Sofia'],detail:'Direct flight Nashville to Denver.',hrs:[16.83,18.83],color:'red'}
   ],
   '7/30': [
     {title:'🚗 Rental Pickup',time:'8:00am',type:'confirmed',who:['Jesse','Christian'],detail:'Pick up rental car at 8am.',hrs:[8,8.5]}
@@ -443,7 +443,10 @@ function buildCalendar() {
 
     let evHtml = '';
     (events[dateStr]||[]).forEach((ev,i) => {
-      evHtml += `<div class="ev ev-${ev.type}" data-date="${dateStr}" data-idx="${i}">${ev.title}</div>`;
+      let colorStyle = '';
+      if (ev.color === 'pink') colorStyle = 'style="background:rgba(255,105,180,.15);border-left:3px solid #ff69b4;color:#ff69b4;"';
+      else if (ev.color === 'red') colorStyle = 'style="background:rgba(248,81,73,.15);border-left:3px solid #f85149;color:#fca5a5;"';
+      evHtml += `<div class="ev ${ev.color ? '' : 'ev-'+ev.type}" ${colorStyle} data-date="${dateStr}" data-idx="${i}">${ev.title}</div>`;
     });
 
     cell.innerHTML = `<span class="date-num">${month} ${dayNum} <span class="day-name">${dayName}</span></span>${rental}${weatherLine}${availHtml}${evHtml}`;
@@ -541,11 +544,43 @@ function openDayTimeline(dateStr) {
   });
 
   const dayEvents = events[dateStr]||[];
-  dayEvents.forEach((ev,i) => {
-    if (!ev.hrs) return;
+  const colorMap = {pink:{bg:'rgba(255,105,180,.15)',border:'#ff69b4',text:'#ff69b4'},red:{bg:'rgba(248,81,73,.15)',border:'#f85149',text:'#fca5a5'}};
+  const baseLeft = 8 + everyone.length*18 + 6;
+
+  // Assign columns only when events overlap
+  const evItems = dayEvents.map((ev,i) => ({ev,i,col:0})).filter(x => x.ev.hrs);
+  evItems.forEach((item, idx) => {
+    // Find which columns are taken by overlapping earlier events
+    const takenCols = new Set();
+    evItems.slice(0, idx).forEach(prev => {
+      if (prev.ev.hrs[0] < item.ev.hrs[1] && prev.ev.hrs[1] > item.ev.hrs[0]) {
+        takenCols.add(prev.col);
+      }
+    });
+    // Assign first free column
+    let col = 0;
+    while (takenCols.has(col)) col++;
+    item.col = col;
+  });
+
+  const maxCols = evItems.length > 0 ? Math.max(...evItems.map(x => x.col)) + 1 : 1;
+  const colWidth = maxCols > 1 ? Math.floor(200 / maxCols) : 0;
+
+  evItems.forEach(({ev, i, col}) => {
     const top = (ev.hrs[0] - startHour) * hourHeight;
     const height = Math.max((ev.hrs[1] - ev.hrs[0]) * hourHeight, 20);
-    blocksHtml += `<div class="timeline-block tb-${ev.type}" style="top:${top}px;height:${height}px;left:${8 + everyone.length*18 + 6}px;right:8px;cursor:pointer;" data-date="${dateStr}" data-idx="${i}">${ev.title}</div>`;
+    let style;
+    if (maxCols > 1) {
+      const left = baseLeft + (col * colWidth);
+      style = `top:${top}px;height:${height}px;left:${left}px;width:${colWidth - 4}px;right:auto;cursor:pointer;`;
+    } else {
+      style = `top:${top}px;height:${height}px;left:${baseLeft}px;right:8px;cursor:pointer;`;
+    }
+    if (ev.color && colorMap[ev.color]) {
+      const c = colorMap[ev.color];
+      style += `background:${c.bg};border-left:3px solid ${c.border};color:${c.text};outline:1px solid ${c.border};`;
+    }
+    blocksHtml += `<div class="timeline-block ${ev.color ? '' : 'tb-'+ev.type}" style="${style}" data-date="${dateStr}" data-idx="${i}">${ev.title}</div>`;
   });
 
   const totalHeight = (endHour - startHour) * hourHeight;

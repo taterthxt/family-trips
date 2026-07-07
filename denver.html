@@ -347,30 +347,10 @@ const weather = {
   '8/5':{hi:88,lo:60,icon:'⛅',loc:'Denver, CO'}
 };
 
-const workSchedules = {
-  'Christian': [{d:'7/29',t:'9am–4pm'},{d:'7/30',t:'9am–4pm'},{d:'7/31',t:'9am–4pm'}],
-  'Jesse': [], 'Kenzie': [], 'Ben': [], 'Ace': [], 'Sofia': []
-};
+const workSchedules = {};
 const rentalDates = ['7/30','7/31','8/1','8/2','8/3','8/4','8/5'];
-const events = {
-  '7/29': [
-    {title:'✈️ Ben/Ace: BNA→CLT',time:'2:52pm–5:30pm (2h 38m)',type:'travel',who:['Ben','Ace'],detail:'Nashville to Charlotte.',hrs:[14.87,17.5],color:'pink'},
-    {title:'✈️ Ben/Ace: CLT→DEN',time:'6:32pm–8:17pm (3h 45m)',type:'travel',who:['Ben','Ace'],detail:'Charlotte to Denver. Arrives 8:17pm MT.',hrs:[18.53,20.28],color:'pink'},
-    {title:'✈️ Jesse/Kenzie/Sofia: BNA→DEN',time:'4:50pm–6:50pm (2h 0m)',type:'travel',who:['Jesse','Kenzie','Sofia'],detail:'Direct flight Nashville to Denver.',hrs:[16.83,18.83],color:'red'}
-  ],
-  '7/30': [
-    {title:'🚗 Rental Pickup',time:'8:00am',type:'confirmed',who:['Jesse','Christian'],detail:'Pick up rental car at 8am.',hrs:[8,8.5]}
-  ],
-  '8/1': [
-    {title:'🍺 Bar Hopping w/ Isaiah',time:'Evening',type:'confirmed',who:['Christian','Jesse','Kenzie','Ben','Ace','Sofia'],detail:'Bar hopping with Christian\'s coworker Isaiah.',hrs:[20,23]}
-  ],
-  '8/5': [
-    {title:'🚗 Rental Drop-off',time:'8:00am',type:'confirmed',who:['Jesse','Christian'],detail:'Return rental car at 8am.',hrs:[8,8.5]}
-  ]
-};
-let workHoursData = {
-  'Christian': [{d:'7/29',s:9,e:16},{d:'7/30',s:9,e:16},{d:'7/31',s:9,e:16}]
-};
+const events = {};
+let workHoursData = {};
 
 // === FIREBASE SETUP ===
 const DB_URL = 'https://family-trip---june-2026-default-rtdb.firebaseio.com/trips/denver';
@@ -491,10 +471,15 @@ function openEventPanel(dateStr, idx) {
   if (!ev) return;
   const w = weather[dateStr];
   let driveHtml = ev.drive ? `<h3>Drive Time</h3><p>${ev.drive}</p>` : '';
+  let locationHtml = '';
+  if (ev.location) {
+    locationHtml = `<h3>📍 Location</h3><p><a href="${ev.location.url}" target="_blank" style="color:#58a6ff;text-decoration:underline;">${ev.location.name} ↗</a></p>`;
+  }
   panelContent.innerHTML = `
     <h2>${ev.title}</h2>
     <h3>Time</h3><p>${ev.time}</p>
     <h3>Weather</h3><p>${w?`${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}`:'—'}</p>
+    ${locationHtml}
     ${driveHtml}
     <h3>Who</h3><p>${ev.who.length===everyone.length?'Everyone':ev.who.join(', ')}</p>
     <h3>Details</h3><p>${ev.detail}</p>

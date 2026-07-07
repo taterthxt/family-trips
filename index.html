@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="✈️ Family Trips">
+<meta name="apple-mobile-web-app-title" content="Family Trips">
 <meta name="theme-color" content="#0d1117">
 <title>Family Trips — 2026</title>
 <style>
@@ -112,6 +112,16 @@ body {
 
 .page-header, .trip-grid { position: relative; z-index: 1; }
 
+/* Trip iframe overlay */
+.trip-frame-overlay {
+  position: fixed; inset: 0; z-index: 500; background: #0d1117;
+  display: none; flex-direction: column;
+}
+.trip-frame-overlay.visible { display: flex; }
+.trip-frame-overlay iframe {
+  flex: 1; border: none; width: 100%; height: 100%;
+}
+
 @media (max-width: 768px) {
   .trip-grid { grid-template-columns: 1fr; max-width: 100%; }
   .page-header h1 { font-size: 22px; }
@@ -131,6 +141,11 @@ body {
 </div>
 
 <div class="trip-grid" id="trip-grid"></div>
+
+<!-- Trip iframe overlay -->
+<div class="trip-frame-overlay" id="trip-frame-overlay">
+  <iframe id="trip-iframe" src="" allow="geolocation"></iframe>
+</div>
 
 <script>
 const trips = [
@@ -187,9 +202,23 @@ trips.forEach(trip => {
     <div class="card-people">${trip.people}</div>
     <div class="card-progress"><div class="card-progress-fill" style="width:${status.progress}%"></div></div>
   `;
-  card.addEventListener('click', () => { window.location.href = trip.url; });
+  card.addEventListener('click', () => { openTrip(trip.url); });
   grid.appendChild(card);
 });
+
+// Trip iframe overlay
+const tripOverlay = document.getElementById('trip-frame-overlay');
+const tripIframe = document.getElementById('trip-iframe');
+function openTrip(url) {
+  tripIframe.src = url;
+  tripOverlay.classList.add('visible');
+}
+function closeTrip() {
+  tripOverlay.classList.remove('visible');
+  tripIframe.src = '';
+}
+// Listen for back button clicks from inside the iframe
+window.addEventListener('message', e => { if (e.data === 'close-trip') closeTrip(); });
 // Spawn flying planes in background
 const planesContainer = document.getElementById('planes-container');
 function spawnPlane() {

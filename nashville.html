@@ -44,7 +44,7 @@ body {
 </style>
 </head>
 <body>
-<a class="back-btn" href="index.html" style="position:absolute;top:12px;left:12px;z-index:100;background:#21262d;border:1px solid #30363d;color:#8b949e;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;text-decoration:none;transition:border-color 0.2s,color 0.2s;">← All Trips</a>
+<a class="back-btn" href="#" onclick="if(window.parent!==window){window.parent.postMessage('close-trip','*');return false;}else{window.location.href='index.html';}return false;" style="position:absolute;top:12px;left:12px;z-index:100;background:#21262d;border:1px solid #30363d;color:#8b949e;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;text-decoration:none;transition:border-color 0.2s,color 0.2s;">← All Trips</a>
 <div class="main-content" id="main-content">
 <div class="header">
   <div class="header-left"><span style="font-size:22px;">☀️</span></div>

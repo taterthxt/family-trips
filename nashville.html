@@ -236,13 +236,12 @@ body {
   .avail-pip { font-size:9px; padding:1px 3px; }
   .ev { font-size:11px; padding:6px 8px; margin-bottom:4px; white-space:normal; }
 
-  /* Panel: full screen overlay, respects actual viewport even when zoomed */
+  /* Panel: full screen overlay */
   .detail-panel { 
     width:100vw; height:100dvh; right:-105vw; top:0;
     border-left:none; padding:16px; padding-top:50px;
     position:fixed; z-index:200;
     overflow-y:auto; -webkit-overflow-scrolling:touch;
-    transform-origin: top left;
   }
   .detail-panel.open { right:0; }
   .detail-panel .close-btn { font-size:13px; padding:10px 16px; top:10px; right:10px; position:absolute; z-index:10; }
@@ -323,21 +322,7 @@ body {
 <script>
 // === DATA ===
 const everyone = ['Christian','Jesse','Kenzie','Ben','Ace','Sofia'];
-const weather = {
-  '6/22':null,'6/23':null,
-  '6/24':{hi:83,lo:66,icon:'☀️',loc:'Nashville, TN'},
-  '6/25':{hi:77,lo:70,icon:'🌤️',loc:'Bowling Green, KY'},
-  '6/26':{hi:77,lo:70,icon:'🌤️',loc:'Bowling Green, KY'},
-  '6/27':{hi:87,lo:69,icon:'⛅',loc:'Nashville, TN'},
-  '6/28':{hi:83,lo:72,icon:'⛅',loc:'Bowling Green, KY'},
-  '6/29':{hi:84,lo:72,icon:'🌤️',loc:'Bowling Green, KY'},
-  '6/30':{hi:85,lo:70,icon:'☀️',loc:'Bowling Green, KY'},
-  '7/1':{hi:87,lo:71,icon:'⛅',loc:'Bowling Green, KY'},
-  '7/2':{hi:88,lo:72,icon:'🌦️',loc:'Bowling Green, KY'},
-  '7/3':{hi:89,lo:71,icon:'⛅',loc:'Spring Hill, TN'},
-  '7/4':{hi:90,lo:72,icon:'🌤️',loc:'Spring Hill, TN'},
-  '7/5':{hi:87,lo:71,icon:'⛅',loc:'Bowling Green, KY'}
-};
+let weather = {};
 const rentalDates = ['6/24','6/25','6/26','6/27','6/28','6/29','6/30','7/1','7/2','7/3'];
 const workSchedules = {};
 const events = {};
@@ -359,10 +344,11 @@ async function fbDelete(path) {
 
 // Load trip data from Firebase
 async function loadTripData() {
-  const [wsData, evData, whData] = await Promise.all([
+  const [wsData, evData, whData, wxData] = await Promise.all([
     fbGet('workSchedules'),
     fbGet('events'),
-    fbGet('workHours')
+    fbGet('workHours'),
+    fbGet('weather')
   ]);
   // Populate workSchedules
   if (wsData) { Object.keys(wsData).forEach(k => { workSchedules[k] = wsData[k] || []; }); }
@@ -370,6 +356,8 @@ async function loadTripData() {
   if (evData) { Object.keys(evData).forEach(k => { events[k.replace('-','/')] = evData[k] || []; }); }
   // Populate workHours
   if (whData) { workHoursData = whData; }
+  // Populate weather (keys in Firebase use dash: "6-24", convert to "6/24")
+  if (wxData) { Object.keys(wxData).forEach(k => { weather[k.replace('-','/')] = wxData[k]; }); }
   // Rebuild calendar after data loads
   buildCalendar();
   // Also reload scheduled activities immediately
@@ -444,21 +432,20 @@ const panel = document.getElementById('detail-panel');
 const panelContent = document.getElementById('panel-content');
 const mainContent = document.getElementById('main-content');
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-function closePanel() { panel.classList.remove('open'); mainContent.classList.remove('panel-open'); document.querySelectorAll('.ev,.ev-scheduled').forEach(b=>b.classList.remove('highlighted','dimmed')); resetZoomOnClose(); }
+let panelHistory = null; // Track if we navigated from timeline to event detail
+function closePanel() {
+  if (panelHistory) {
+    const returnTo = panelHistory;
+    panelHistory = null;
+    openDayTimeline(returnTo);
+    return;
+  }
+  panel.classList.remove('open'); mainContent.classList.remove('panel-open'); document.querySelectorAll('.ev,.ev-scheduled').forEach(b=>b.classList.remove('highlighted','dimmed'));
+}
 document.getElementById('panel-close').addEventListener('click', closePanel);
 document.addEventListener('click', e => { if (!panel.contains(e.target) && !e.target.closest('.ev') && !e.target.closest('.ev-scheduled') && !e.target.closest('.avail-row') && !e.target.closest('.activity-chip') && !e.target.closest('.cal-cell')) closePanel(); });
 
-// Mobile zoom reset when panel opens/closes
-function resetZoomOnOpen() {
-  if (window.innerWidth > 768) return;
-  const vp = document.querySelector('meta[name="viewport"]');
-  if (vp) vp.setAttribute('content','width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
-}
-function resetZoomOnClose() {
-  if (window.innerWidth > 768) return;
-  const vp = document.querySelector('meta[name="viewport"]');
-  if (vp) vp.setAttribute('content','width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
-}
+// Mobile panel open/close
 
 // Hover (desktop) — event delegation
 if (!isTouchDevice) {
@@ -502,7 +489,7 @@ function openEventPanel(dateStr, idx) {
     <div class="comments-section" id="comments-section" data-key="trip-comments-${dateStr}"></div>
   `;
   initComments(`trip-comments-${dateStr}`);
-  panel.classList.add('open'); mainContent.classList.add('panel-open'); resetZoomOnOpen();
+  panel.classList.add('open'); mainContent.classList.add('panel-open');
 }
 
 function openAvailPanel(dateStr) {
@@ -516,7 +503,7 @@ function openAvailPanel(dateStr) {
   html += `<div class="comments-section" id="comments-section" data-key="trip-comments-${dateStr}"></div>`;
   panelContent.innerHTML = html;
   initComments(`trip-comments-${dateStr}`);
-  panel.classList.add('open'); mainContent.classList.add('panel-open'); resetZoomOnOpen();
+  panel.classList.add('open'); mainContent.classList.add('panel-open');
 }
 
 // Person colors for work blocks
@@ -585,10 +572,10 @@ function openDayTimeline(dateStr) {
   panelContent.innerHTML = html;
   // Click event blocks to open event detail
   panelContent.querySelectorAll('.timeline-block[data-idx]').forEach(b => {
-    b.addEventListener('click', () => openEventPanel(b.dataset.date, +b.dataset.idx));
+    b.addEventListener('click', () => { panelHistory = b.dataset.date; openEventPanel(b.dataset.date, +b.dataset.idx); });
   });
   initComments(`trip-comments-${dateStr}`);
-  panel.classList.add('open'); mainContent.classList.add('panel-open'); resetZoomOnOpen();
+  panel.classList.add('open'); mainContent.classList.add('panel-open');
 }
 
 

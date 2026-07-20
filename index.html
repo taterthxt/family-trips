@@ -196,12 +196,12 @@ trips.forEach(trip => {
   card.className = `trip-card ${trip.cssClass}`;
   card.innerHTML = `
     <span class="card-status">${status.label}</span>
+    <div class="card-comments" id="comments-${trip.id}" style="position:absolute;top:38px;right:16px;font-size:9px;color:#8b949e;display:none;">💬 <span></span></div>
     <div class="card-icon">${trip.icon}</div>
     <div class="card-title">${trip.title}</div>
     <div class="card-dates">${trip.dates}</div>
     <div class="card-people">${trip.people}</div>
     <div class="card-progress"><div class="card-progress-fill" style="width:${status.progress}%"></div></div>
-    <div class="card-comments" id="comments-${trip.id}" style="font-size:10px;color:#8b949e;margin-top:8px;display:none;">💬 <span></span></div>
   `;
   card.addEventListener('click', () => { openTrip(trip.url); });
   grid.appendChild(card);

@@ -14,7 +14,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: #0d1117; color: #c9d1d9; min-height: 100vh;
   display: flex; flex-direction: column; align-items: center; padding: 12px;
-  overflow-x: hidden; overflow-y: auto; max-width: 100vw;
+  overflow-x: hidden; overflow-y: auto; max-width: 100vw; overscroll-behavior-y: contain;
 }
 .main-content { transition: transform 0.3s ease; display: flex; flex-direction: column; align-items: center; width: 100%; }
 .main-content.panel-open { transform: translateX(-200px); }
@@ -103,6 +103,8 @@ body {
 .ev-open.highlighted { box-shadow:0 0 10px rgba(72,79,88,.4); }
 .ev-milestone { background:#200a0d; border-left:3px solid #f85149; color:#fca5a5; }
 .ev-milestone.highlighted { box-shadow:0 0 10px rgba(248,81,73,.4); }
+.ev-review { background:transparent; border:1.5px dashed #ff69b4; border-left:3px dashed #ff69b4; color:#ff69b4; }
+.ev-review.highlighted { box-shadow:0 0 10px rgba(255,105,180,.4); }
 .dimmed { opacity:0.08 !important; }
 
 /* Scheduled (drag-dropped) */
@@ -186,6 +188,7 @@ body {
 .timeline-block.tb-pending { background:#1a1030; border-left:3px solid #a371f7; color:#c4a5f7; }
 .timeline-block.tb-open { background:#12141a; border-left:3px solid #484f58; color:#8b949e; }
 .timeline-block.tb-milestone { background:#200a0d; border-left:3px solid #f85149; color:#fca5a5; }
+.timeline-block.tb-review { background:transparent; border:1.5px dashed #ff69b4; border-left:3px dashed #ff69b4; color:#ff69b4; }
 .timeline-legend { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; font-size:8px; color:#8b949e; }
 .timeline-legend-item { display:flex; align-items:center; gap:3px; }
 .timeline-legend-swatch { width:10px; height:8px; border-radius:2px; }
@@ -334,12 +337,26 @@ body {
 </div>
 
 <script>
+// === HELPERS ===
+const isApple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+function getMapsUrl(url) {
+  if (!url || isApple) return url;
+  // Convert Apple Maps URLs to Google Maps for Android/other
+  if (url.includes('maps.apple.com')) {
+    const params = new URL(url).searchParams;
+    const q = params.get('q') || params.get('address') || '';
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q.replace(/\+/g, ' '))}`;
+  }
+  return url;
+}
+
 // === DATA ===
 const everyone = ['Christian','Jesse','Kenzie','Ben','Ace','Sofia'];
 let weather = {};
 
 const workSchedules = {};
 const rentalDates = ['7/30','7/31','8/1','8/2','8/3','8/4','8/5'];
+const bombDates = ['7/31','8/1','8/2'];
 const events = {};
 let workHoursData = {};
 
@@ -405,6 +422,7 @@ function buildCalendar() {
     const dayName = dayNames[dateObj.getDay()];
     const w = weather[dateStr];
     const rental = rentalDates.includes(dateStr) ? '<span class="rental-badge">🚗</span>' : '';
+    const bomb = bombDates.includes(dateStr) ? '<span class="rental-badge" style="right:18px;">💣</span>' : '';
     const weatherLine = w ? `<div class="weather-line">${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}</div>` : '';
 
     let availHtml = '';
@@ -421,7 +439,7 @@ function buildCalendar() {
       evHtml += `<div class="ev ${ev.color ? '' : 'ev-'+ev.type}" ${colorStyle} data-date="${dateStr}" data-idx="${i}">${ev.title}</div>`;
     });
 
-    cell.innerHTML = `<span class="date-num">${month} ${dayNum} <span class="day-name">${dayName}</span></span>${rental}${weatherLine}${availHtml}${evHtml}`;
+    cell.innerHTML = `<span class="date-num">${month} ${dayNum} <span class="day-name">${dayName}</span></span>${rental}${bomb}${weatherLine}${availHtml}${evHtml}`;
     calGrid.appendChild(cell);
   });
 }
@@ -473,8 +491,8 @@ function openEventPanel(dateStr, idx) {
   const w = weather[dateStr];
   let driveHtml = ev.drive ? `<h3>Drive Time</h3><p>${ev.drive}</p>` : '';
   let locationHtml = '';
-  if (ev.location) {
-    locationHtml = `<h3>📍 Location</h3><p><a href="${ev.location.url}" target="_blank" style="color:#58a6ff;text-decoration:underline;">${ev.location.name} ↗</a></p>`;
+  if (ev.location && ev.location.url) {
+    locationHtml = `<h3>📍 Location</h3><p><a href="${getMapsUrl(ev.location.url)}" target="_blank" style="color:#58a6ff;text-decoration:underline;">${ev.location.name} ↗</a></p>`;
   }
   panelContent.innerHTML = `
     <h2>${ev.title}</h2>
@@ -592,8 +610,34 @@ function openDayTimeline(dateStr) {
 }
 
 // === COMMENT SYSTEM ===
+const USERS_URL = 'https://family-trip---june-2026-default-rtdb.firebaseio.com/users';
+function getDeviceId() {
+  let id = '';
+  try { id = localStorage.getItem('trip-device-id') || ''; } catch(e){}
+  if (!id) {
+    id = 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { localStorage.setItem('trip-device-id', id); } catch(e){}
+  }
+  return id;
+}
 function getCommentUser() { try { return localStorage.getItem('trip-comment-user')||''; } catch(e){ return ''; } }
-function setCommentUser(name) { try { localStorage.setItem('trip-comment-user',name); } catch(e){} }
+function setCommentUser(name) {
+  try { localStorage.setItem('trip-comment-user', name); } catch(e){}
+  const deviceId = getDeviceId();
+  fetch(`${USERS_URL}/${deviceId}.json`, {method:'PUT', body:JSON.stringify({name, ts:Date.now()}), headers:{'Content-Type':'application/json'}}).catch(()=>{});
+}
+// On load: if localStorage is empty, try to recover from Firebase
+(async function recoverUser() {
+  if (getCommentUser()) return;
+  const deviceId = getDeviceId();
+  try {
+    const r = await fetch(`${USERS_URL}/${deviceId}.json`);
+    const data = await r.json();
+    if (data && data.name) {
+      try { localStorage.setItem('trip-comment-user', data.name); } catch(e){}
+    }
+  } catch(e){}
+})();
 let activeCommentKey = null;
 let commentPollInterval = null;
 
@@ -607,8 +651,8 @@ function initComments(key) {
     section.innerHTML = `
       <h3>💬 Comments</h3>
       <div class="comment-name-prompt">
-        <div style="font-size:10px;color:#8b949e;">What's your name?</div>
-        <input type="text" id="comment-name-input" placeholder="e.g. Christian, Jesse..." maxlength="20">
+        <div style="font-size:10px;color:#8b949e;">What is your alter ego?</div>
+        <input type="text" id="comment-name-input" placeholder="e.g. Christina, Besse..." maxlength="20">
         <button id="comment-name-save">Join</button>
       </div>
     `;

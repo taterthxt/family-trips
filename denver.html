@@ -82,6 +82,7 @@ body {
 .cal-cell.today .date-num { color:#58a6ff; }
 .cal-cell .weather-line { font-size:7px; color:#6e7681; margin-bottom:2px; }
 .cal-cell .rental-badge { position:absolute; top:4px; right:4px; font-size:7px; opacity:0.6; }
+.cal-cell .bomb-badge { position:absolute; top:4px; right:20px; font-size:7px; opacity:0.6; }
 
 /* Availability dots */
 .avail-row { display:flex; gap:2px; margin-bottom:3px; }
@@ -244,6 +245,7 @@ body {
   .cal-cell .date-num .day-name { display:inline; font-weight:400; color:#484f58; font-size:11px; margin-left:4px; }
   .cal-cell .weather-line { font-size:9px; margin-bottom:4px; }
   .cal-cell .rental-badge { font-size:9px; top:10px; right:12px; }
+  .cal-cell .bomb-badge { font-size:9px; top:10px; right:30px; }
   .avail-row { gap:3px; margin-bottom:5px; }
   .avail-pip { font-size:9px; padding:1px 3px; }
   .ev { font-size:11px; padding:6px 8px; margin-bottom:4px; white-space:normal; }
@@ -422,7 +424,7 @@ function buildCalendar() {
     const dayName = dayNames[dateObj.getDay()];
     const w = weather[dateStr];
     const rental = rentalDates.includes(dateStr) ? '<span class="rental-badge">🚗</span>' : '';
-    const bomb = bombDates.includes(dateStr) ? '<span class="rental-badge" style="right:18px;">💣</span>' : '';
+    const bomb = bombDates.includes(dateStr) ? '<span class="bomb-badge">💣</span>' : '';
     const weatherLine = w ? `<div class="weather-line">${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}</div>` : '';
 
     let availHtml = '';

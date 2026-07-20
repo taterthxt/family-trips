@@ -628,7 +628,7 @@ function initComments(key) {
   const section = document.getElementById('comments-section');
   if (!section) return;
   activeCommentKey = key;
-  markCommentsSeen();
+  markDaySeen(key);
   const user = getCommentUser();
   if (!user) {
     section.innerHTML = `
@@ -708,21 +708,46 @@ function renderMentions(s) { return escHtml(s).replace(/@(\w+)/g,'<span class="m
 
 // === NOTIFICATION BUBBLE ===
 let unseenDays = [];
+
+function getSeenComments() {
+  try { return JSON.parse(localStorage.getItem('nashville-seen-comments') || '{}'); } catch(e) { return {}; }
+}
+function markDaySeen(dayKey) {
+  const seen = getSeenComments();
+  if (!seen[dayKey]) seen[dayKey] = [];
+  fbGet(`comments/${dayKey}`).then(data => {
+    if (data) {
+      Object.keys(data).forEach(id => { if (!seen[dayKey].includes(id)) seen[dayKey].push(id); });
+      localStorage.setItem('nashville-seen-comments', JSON.stringify(seen));
+      checkNewComments();
+    }
+  });
+}
+
 async function checkNewComments() {
   const user = getCommentUser();
   if (!user) return;
-  const lastSeen = parseInt(localStorage.getItem('trip-last-seen') || '0');
+  const seen = getSeenComments();
   const data = await fbGet('comments');
   if (!data) return;
   let newCount = 0, mentionCount = 0;
   const daysWithNew = [];
   Object.entries(data).forEach(([key, dayComments]) => {
     if (!dayComments) return;
+    const seenIds = seen[key] || [];
     let dayHasNew = false;
-    Object.values(dayComments).forEach(c => {
+    Object.entries(dayComments).forEach(([id, c]) => {
       if (!c || typeof c !== 'object') return;
-      if (!c.ts && !c.author) { Object.values(c).forEach(inner => { if (inner && inner.ts > lastSeen && inner.author !== user) { newCount++; dayHasNew = true; if (inner.text && inner.text.toLowerCase().includes('@' + user.toLowerCase())) mentionCount++; } }); return; }
-      if (c.ts > lastSeen && c.author !== user) {
+      if (!c.ts && !c.author) {
+        Object.entries(c).forEach(([innerId, inner]) => {
+          if (inner && inner.author !== user && !seenIds.includes(innerId)) {
+            newCount++; dayHasNew = true;
+            if (inner.text && inner.text.toLowerCase().includes('@' + user.toLowerCase())) mentionCount++;
+          }
+        });
+        return;
+      }
+      if (c.author !== user && !seenIds.includes(id)) {
         newCount++; dayHasNew = true;
         if (c.text && c.text.toLowerCase().includes('@' + user.toLowerCase())) mentionCount++;
       }
@@ -745,18 +770,14 @@ async function checkNewComments() {
     bubble.classList.remove('visible');
   }
 }
-// Mark as seen when opening any comment panel
-function markCommentsSeen() { localStorage.setItem('trip-last-seen', String(Date.now())); checkNewComments(); }
-// Check on load and every 5s
+
 setTimeout(checkNewComments, 2000); setInterval(checkNewComments, 5000);
 document.getElementById('notif-bubble').addEventListener('click', () => {
   if (unseenDays.length > 0) {
     const key = unseenDays[0];
     const dateStr = key.replace('trip-comments-','').replace('-','/');
     openDayTimeline(dateStr);
-    markCommentsSeen();
-  } else {
-    markCommentsSeen();
+    markDaySeen(key);
   }
 });
 

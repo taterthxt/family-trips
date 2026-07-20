@@ -209,32 +209,35 @@ trips.forEach(trip => {
 
 // Check for unread comments on each trip
 const DB_BASE = 'https://family-trip---june-2026-default-rtdb.firebaseio.com/trips';
-async function checkTripComments(tripId, lsKey) {
+async function checkTripComments(tripId, seenKey) {
   try {
     const user = localStorage.getItem('trip-comment-user') || '';
     if (!user) return;
-    const lastSeen = parseInt(localStorage.getItem(lsKey) || '0');
+    const seen = JSON.parse(localStorage.getItem(seenKey) || '{}');
     const r = await fetch(`${DB_BASE}/${tripId}/comments.json`);
     const data = await r.json();
     if (!data) return;
     let count = 0;
-    Object.values(data).forEach(dayComments => {
+    Object.entries(data).forEach(([dayKey, dayComments]) => {
       if (!dayComments) return;
-      Object.values(dayComments).forEach(c => {
+      const seenIds = seen[dayKey] || [];
+      Object.entries(dayComments).forEach(([id, c]) => {
         if (!c || typeof c !== 'object') return;
-        if (!c.ts && !c.author) { Object.values(c).forEach(inner => { if (inner && inner.ts > lastSeen && inner.author !== user) count++; }); return; }
-        if (c.ts > lastSeen && c.author !== user) count++;
+        if (!c.ts && !c.author) { Object.entries(c).forEach(([innerId, inner]) => { if (inner && inner.author !== user && !seenIds.includes(innerId)) count++; }); return; }
+        if (c.author !== user && !seenIds.includes(id)) count++;
       });
     });
     const el = document.getElementById(`comments-${tripId}`);
     if (el && count > 0) {
       el.querySelector('span').textContent = `${count} new comment${count===1?'':'s'}`;
       el.style.display = 'block';
+    } else if (el) {
+      el.style.display = 'none';
     }
   } catch(e) {}
 }
-checkTripComments('denver', 'denver-last-seen');
-checkTripComments('nashville', 'trip-last-seen');
+checkTripComments('denver', 'denver-seen-comments');
+checkTripComments('nashville', 'nashville-seen-comments');
 
 // Trip iframe overlay
 const tripOverlay = document.getElementById('trip-frame-overlay');

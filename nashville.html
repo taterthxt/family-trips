@@ -498,9 +498,9 @@ function openEventPanel(dateStr, idx) {
     <h3>Who</h3><p>${ev.who.length===everyone.length?'Everyone':ev.who.join(', ')}</p>
     <h3>Details</h3><p>${ev.detail}</p>
     ${restHtml}
-    <div class="comments-section" id="comments-section" data-key="trip-comments-${dateStr}"></div>
+    <div class="comments-section" id="comments-section" data-key="trip-comments-${dateStr.replace('/','-')}"></div>
   `;
-  initComments(`trip-comments-${dateStr}`);
+  initComments(`trip-comments-${dateStr.replace('/','-')}`);
   panel.classList.add('open'); mainContent.classList.add('panel-open');
 }
 
@@ -512,9 +512,9 @@ function openAvailPanel(dateStr) {
     html += `<li><strong>${p}</strong> — ${shift ? '⚠️ Working '+shift.t : '✅ Free all day'}</li>`;
   });
   html += `</ul><h3>Weather</h3><p>${w?`${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}`:'—'}</p>`;
-  html += `<div class="comments-section" id="comments-section" data-key="trip-comments-${dateStr}"></div>`;
+  html += `<div class="comments-section" id="comments-section" data-key="trip-comments-${dateStr.replace('/','-')}"></div>`;
   panelContent.innerHTML = html;
-  initComments(`trip-comments-${dateStr}`);
+  initComments(`trip-comments-${dateStr.replace('/','-')}`);
   panel.classList.add('open'); mainContent.classList.add('panel-open');
 }
 
@@ -578,7 +578,7 @@ function openDayTimeline(dateStr) {
         </div>
       </div>
     </div>
-    <div class="comments-section" id="comments-section" data-key="trip-comments-${dateStr}"></div>
+    <div class="comments-section" id="comments-section" data-key="trip-comments-${dateStr.replace('/','-')}"></div>
   `;
 
   panelContent.innerHTML = html;
@@ -586,7 +586,7 @@ function openDayTimeline(dateStr) {
   panelContent.querySelectorAll('.timeline-block[data-idx]').forEach(b => {
     b.addEventListener('click', () => { panelHistory = b.dataset.date; openEventPanel(b.dataset.date, +b.dataset.idx); });
   });
-  initComments(`trip-comments-${dateStr}`);
+  initComments(`trip-comments-${dateStr.replace('/','-')}`);
   panel.classList.add('open'); mainContent.classList.add('panel-open');
 }
 
@@ -738,7 +738,7 @@ async function checkNewComments() {
 // Mark as seen when opening any comment panel
 function markCommentsSeen() { localStorage.setItem('trip-last-seen', String(Date.now())); checkNewComments(); }
 // Check on load and every 15s
-checkNewComments(); setInterval(checkNewComments, 15000);
+setTimeout(checkNewComments, 2000); setInterval(checkNewComments, 5000);
 document.getElementById('notif-bubble').addEventListener('click', () => { markCommentsSeen(); });
 
 // === DRAG & DROP ===

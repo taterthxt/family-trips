@@ -504,9 +504,9 @@ function openEventPanel(dateStr, idx) {
     ${driveHtml}
     <h3>Who</h3><p>${ev.who.length===everyone.length?'Everyone':ev.who.join(', ')}</p>
     <h3>Details</h3><p>${ev.detail}</p>
-    <div class="comments-section" id="comments-section" data-key="denver-comments-${dateStr}"></div>
+    <div class="comments-section" id="comments-section" data-key="denver-comments-${dateStr.replace('/','-')}"></div>
   `;
-  initComments(`denver-comments-${dateStr}`);
+  initComments(`denver-comments-${dateStr.replace('/','-')}`);
   panel.classList.add('open'); mainContent.classList.add('panel-open');
 }
 
@@ -518,9 +518,9 @@ function openAvailPanel(dateStr) {
     html += `<li><strong>${p}</strong> — ${shift ? '⚠️ Working '+shift.t : '✅ Free all day'}</li>`;
   });
   html += `</ul><h3>Weather</h3><p>${w?`${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}`:'—'}</p>`;
-  html += `<div class="comments-section" id="comments-section" data-key="denver-comments-${dateStr}"></div>`;
+  html += `<div class="comments-section" id="comments-section" data-key="denver-comments-${dateStr.replace('/','-')}"></div>`;
   panelContent.innerHTML = html;
-  initComments(`denver-comments-${dateStr}`);
+  initComments(`denver-comments-${dateStr.replace('/','-')}`);
   panel.classList.add('open'); mainContent.classList.add('panel-open');
 }
 
@@ -601,13 +601,13 @@ function openDayTimeline(dateStr) {
         <div class="timeline-grid" style="height:${totalHeight}px;">${gridHtml}${blocksHtml}</div>
       </div>
     </div>
-    <div class="comments-section" id="comments-section" data-key="denver-comments-${dateStr}"></div>
+    <div class="comments-section" id="comments-section" data-key="denver-comments-${dateStr.replace('/','-')}"></div>
   `;
   panelContent.innerHTML = html;
   panelContent.querySelectorAll('.timeline-block[data-idx]').forEach(b => {
     b.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); panelHistory = b.dataset.date; openEventPanel(b.dataset.date, +b.dataset.idx); });
   });
-  initComments(`denver-comments-${dateStr}`);
+  initComments(`denver-comments-${dateStr.replace('/','-')}`);
   panel.classList.add('open'); mainContent.classList.add('panel-open');
 }
 
@@ -748,7 +748,7 @@ async function checkNewComments() {
   } else { bubble.classList.remove('visible'); }
 }
 function markCommentsSeen() { localStorage.setItem('denver-last-seen', String(Date.now())); checkNewComments(); }
-checkNewComments(); setInterval(checkNewComments, 15000);
+setTimeout(checkNewComments, 2000); setInterval(checkNewComments, 5000);
 document.getElementById('notif-bubble').addEventListener('click', () => { markCommentsSeen(); });
 
 // === DRAG & DROP + SWIMMING PROMPT ===

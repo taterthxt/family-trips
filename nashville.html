@@ -871,10 +871,7 @@ document.addEventListener('touchend', async () => {
   if (ptrTriggered) {
     ptrEl.textContent = '⟳ Refreshing...';
     ptrEl.classList.add('refreshing');
-    await loadTripData();
-    if (activeCommentKey) { const user=getCommentUser(); if(user) loadAndRenderComments(activeCommentKey,user); }
-    checkNewComments();
-    setTimeout(() => { ptrEl.classList.remove('visible','refreshing'); }, 1000);
+    window.location.reload();
   } else {
     ptrEl.classList.remove('visible');
   }

@@ -238,6 +238,11 @@ async function checkTripComments(tripId, seenKey) {
 }
 checkTripComments('denver', 'denver-seen-comments');
 checkTripComments('nashville', 'nashville-seen-comments');
+// Poll for comment updates every 5s
+setInterval(() => {
+  checkTripComments('denver', 'denver-seen-comments');
+  checkTripComments('nashville', 'nashville-seen-comments');
+}, 5000);
 
 // Trip iframe overlay
 const tripOverlay = document.getElementById('trip-frame-overlay');
@@ -249,6 +254,9 @@ function openTrip(url) {
 function closeTrip() {
   tripOverlay.classList.remove('visible');
   tripIframe.src = '';
+  // Re-check comments immediately when returning to landing page
+  checkTripComments('denver', 'denver-seen-comments');
+  checkTripComments('nashville', 'nashville-seen-comments');
 }
 // Listen for back button clicks from inside the iframe
 window.addEventListener('message', e => { if (e.data === 'close-trip') closeTrip(); });

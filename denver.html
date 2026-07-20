@@ -463,7 +463,7 @@ function closePanel() {
   panel.classList.remove('open'); mainContent.classList.remove('panel-open'); document.querySelectorAll('.ev,.ev-scheduled').forEach(b=>b.classList.remove('highlighted','dimmed'));
 }
 document.getElementById('panel-close').addEventListener('click', closePanel);
-document.addEventListener('click', e => { if (!panel.contains(e.target) && !e.target.closest('.ev') && !e.target.closest('.ev-scheduled') && !e.target.closest('.avail-row') && !e.target.closest('.activity-chip') && !e.target.closest('.cal-cell')) closePanel(); });
+document.addEventListener('click', e => { if (!panel.contains(e.target) && !e.target.closest('.ev') && !e.target.closest('.ev-scheduled') && !e.target.closest('.avail-row') && !e.target.closest('.activity-chip') && !e.target.closest('.cal-cell') && !e.target.closest('#notif-bubble')) closePanel(); });
 
 if (!isTouchDevice) {
   calGrid.addEventListener('mouseover', e => {
@@ -790,12 +790,14 @@ async function checkNewComments() {
 }
 
 setTimeout(checkNewComments, 2000); setInterval(checkNewComments, 5000);
-document.getElementById('notif-bubble').addEventListener('click', () => {
+document.getElementById('notif-bubble').addEventListener('click', (e) => {
+  e.stopPropagation();
   if (unseenDays.length > 0) {
     const key = unseenDays[0];
     const dateStr = key.replace('denver-comments-','').replace('-','/');
     openDayTimeline(dateStr);
-    markDaySeen(key);
+    // Only mark as seen after panel is confirmed open
+    setTimeout(() => { if (panel.classList.contains('open')) markDaySeen(key); }, 300);
   }
 });
 

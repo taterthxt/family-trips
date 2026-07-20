@@ -455,7 +455,7 @@ function closePanel() {
   panel.classList.remove('open'); mainContent.classList.remove('panel-open'); document.querySelectorAll('.ev,.ev-scheduled').forEach(b=>b.classList.remove('highlighted','dimmed'));
 }
 document.getElementById('panel-close').addEventListener('click', closePanel);
-document.addEventListener('click', e => { if (!panel.contains(e.target) && !e.target.closest('.ev') && !e.target.closest('.ev-scheduled') && !e.target.closest('.avail-row') && !e.target.closest('.activity-chip') && !e.target.closest('.cal-cell')) closePanel(); });
+document.addEventListener('click', e => { if (!panel.contains(e.target) && !e.target.closest('.ev') && !e.target.closest('.ev-scheduled') && !e.target.closest('.avail-row') && !e.target.closest('.activity-chip') && !e.target.closest('.cal-cell') && !e.target.closest('#notif-bubble')) closePanel(); });
 
 // Mobile panel open/close
 
@@ -772,12 +772,27 @@ async function checkNewComments() {
 }
 
 setTimeout(checkNewComments, 2000); setInterval(checkNewComments, 5000);
-document.getElementById('notif-bubble').addEventListener('click', () => {
+document.getElementById('notif-bubble').addEventListener('click', (e) => {
+  e.stopPropagation();
   if (unseenDays.length > 0) {
     const key = unseenDays[0];
-    const dateStr = key.replace('trip-comments-','').replace('-','/');
-    openDayTimeline(dateStr);
-    markDaySeen(key);
+    let dateStr = key.replace('trip-comments-','').replace('-','/');
+    // Handle legacy nested structure (trip-comments-6 with sub-keys like 24, 25)
+    // If dateStr has no slash (just a month number), find the earliest sub-day
+    if (!dateStr.includes('/')) {
+      fbGet(`comments/${key}`).then(data => {
+        if (data) {
+          const days = Object.keys(data).filter(k => k.match(/^\d+$/)).sort((a,b) => parseInt(a)-parseInt(b));
+          if (days.length > 0) {
+            openDayTimeline(`${dateStr}/${days[0]}`);
+            setTimeout(() => { if (panel.classList.contains('open')) markDaySeen(key); }, 300);
+          }
+        }
+      });
+    } else {
+      openDayTimeline(dateStr);
+      setTimeout(() => { if (panel.classList.contains('open')) markDaySeen(key); }, 300);
+    }
   }
 });
 

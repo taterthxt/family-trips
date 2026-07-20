@@ -201,10 +201,40 @@ trips.forEach(trip => {
     <div class="card-dates">${trip.dates}</div>
     <div class="card-people">${trip.people}</div>
     <div class="card-progress"><div class="card-progress-fill" style="width:${status.progress}%"></div></div>
+    <div class="card-comments" id="comments-${trip.id}" style="font-size:10px;color:#8b949e;margin-top:8px;display:none;">💬 <span></span></div>
   `;
   card.addEventListener('click', () => { openTrip(trip.url); });
   grid.appendChild(card);
 });
+
+// Check for unread comments on each trip
+const DB_BASE = 'https://family-trip---june-2026-default-rtdb.firebaseio.com/trips';
+async function checkTripComments(tripId, lsKey) {
+  try {
+    const user = localStorage.getItem('trip-comment-user') || '';
+    if (!user) return;
+    const lastSeen = parseInt(localStorage.getItem(lsKey) || '0');
+    const r = await fetch(`${DB_BASE}/${tripId}/comments.json`);
+    const data = await r.json();
+    if (!data) return;
+    let count = 0;
+    Object.values(data).forEach(dayComments => {
+      if (!dayComments) return;
+      Object.values(dayComments).forEach(c => {
+        if (!c || typeof c !== 'object') return;
+        if (!c.ts && !c.author) { Object.values(c).forEach(inner => { if (inner && inner.ts > lastSeen && inner.author !== user) count++; }); return; }
+        if (c.ts > lastSeen && c.author !== user) count++;
+      });
+    });
+    const el = document.getElementById(`comments-${tripId}`);
+    if (el && count > 0) {
+      el.querySelector('span').textContent = `${count} new comment${count===1?'':'s'}`;
+      el.style.display = 'block';
+    }
+  } catch(e) {}
+}
+checkTripComments('denver', 'denver-last-seen');
+checkTripComments('nashville', 'trip-last-seen');
 
 // Trip iframe overlay
 const tripOverlay = document.getElementById('trip-frame-overlay');

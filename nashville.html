@@ -707,23 +707,33 @@ function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 function renderMentions(s) { return escHtml(s).replace(/@(\w+)/g,'<span class="mention">@$1</span>'); }
 
 // === NOTIFICATION BUBBLE ===
+let unseenDays = [];
 async function checkNewComments() {
   const user = getCommentUser();
   if (!user) return;
   const lastSeen = parseInt(localStorage.getItem('trip-last-seen') || '0');
   const data = await fbGet('comments');
   if (!data) return;
-  let newCount = 0;
-  let mentionCount = 0;
-  Object.values(data).forEach(dayComments => {
+  let newCount = 0, mentionCount = 0;
+  const daysWithNew = [];
+  Object.entries(data).forEach(([key, dayComments]) => {
     if (!dayComments) return;
+    let dayHasNew = false;
     Object.values(dayComments).forEach(c => {
+      if (!c || typeof c !== 'object') return;
+      if (!c.ts && !c.author) { Object.values(c).forEach(inner => { if (inner && inner.ts > lastSeen && inner.author !== user) { newCount++; dayHasNew = true; if (inner.text && inner.text.toLowerCase().includes('@' + user.toLowerCase())) mentionCount++; } }); return; }
       if (c.ts > lastSeen && c.author !== user) {
-        newCount++;
+        newCount++; dayHasNew = true;
         if (c.text && c.text.toLowerCase().includes('@' + user.toLowerCase())) mentionCount++;
       }
     });
+    if (dayHasNew) daysWithNew.push(key);
   });
+  daysWithNew.sort((a, b) => {
+    const toNum = k => { const m = k.match(/(\d+)-(\d+)$/); return m ? parseInt(m[1])*100+parseInt(m[2]) : 0; };
+    return toNum(a) - toNum(b);
+  });
+  unseenDays = daysWithNew;
   const bubble = document.getElementById('notif-bubble');
   const text = document.getElementById('notif-text');
   if (newCount > 0) {
@@ -737,9 +747,18 @@ async function checkNewComments() {
 }
 // Mark as seen when opening any comment panel
 function markCommentsSeen() { localStorage.setItem('trip-last-seen', String(Date.now())); checkNewComments(); }
-// Check on load and every 15s
+// Check on load and every 5s
 setTimeout(checkNewComments, 2000); setInterval(checkNewComments, 5000);
-document.getElementById('notif-bubble').addEventListener('click', () => { markCommentsSeen(); });
+document.getElementById('notif-bubble').addEventListener('click', () => {
+  if (unseenDays.length > 0) {
+    const key = unseenDays[0];
+    const dateStr = key.replace('trip-comments-','').replace('-','/');
+    openDayTimeline(dateStr);
+    markCommentsSeen();
+  } else {
+    markCommentsSeen();
+  }
+});
 
 // === DRAG & DROP ===
 const chips = document.querySelectorAll('.activity-chip');

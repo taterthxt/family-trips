@@ -722,6 +722,7 @@ function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 function renderMentions(s) { return escHtml(s).replace(/@(\w+)/g,'<span class="mention">@$1</span>'); }
 
 // === NOTIFICATIONS ===
+let unseenDays = []; // Track which days have unseen comments, sorted earliest first
 async function checkNewComments() {
   const user = getCommentUser();
   if (!user) return;
@@ -729,15 +730,26 @@ async function checkNewComments() {
   const data = await fbGet('comments');
   if (!data) return;
   let newCount = 0, mentionCount = 0;
-  Object.values(data).forEach(dayComments => {
+  const daysWithNew = [];
+  Object.entries(data).forEach(([key, dayComments]) => {
     if (!dayComments) return;
+    let dayHasNew = false;
     Object.values(dayComments).forEach(c => {
+      if (!c || typeof c !== 'object') return;
+      if (!c.ts && !c.author) { Object.values(c).forEach(inner => { if (inner && inner.ts > lastSeen && inner.author !== user) { newCount++; dayHasNew = true; if (inner.text && inner.text.toLowerCase().includes('@' + user.toLowerCase())) mentionCount++; } }); return; }
       if (c.ts > lastSeen && c.author !== user) {
-        newCount++;
+        newCount++; dayHasNew = true;
         if (c.text && c.text.toLowerCase().includes('@' + user.toLowerCase())) mentionCount++;
       }
     });
+    if (dayHasNew) daysWithNew.push(key);
   });
+  // Sort days chronologically (denver-comments-7-30 < denver-comments-8-1)
+  daysWithNew.sort((a, b) => {
+    const toNum = k => { const m = k.match(/(\d+)-(\d+)$/); return m ? parseInt(m[1])*100+parseInt(m[2]) : 0; };
+    return toNum(a) - toNum(b);
+  });
+  unseenDays = daysWithNew;
   const bubble = document.getElementById('notif-bubble');
   const text = document.getElementById('notif-text');
   if (newCount > 0) {
@@ -749,7 +761,18 @@ async function checkNewComments() {
 }
 function markCommentsSeen() { localStorage.setItem('denver-last-seen', String(Date.now())); checkNewComments(); }
 setTimeout(checkNewComments, 2000); setInterval(checkNewComments, 5000);
-document.getElementById('notif-bubble').addEventListener('click', () => { markCommentsSeen(); });
+document.getElementById('notif-bubble').addEventListener('click', () => {
+  if (unseenDays.length > 0) {
+    // Open the earliest day's comment panel
+    const key = unseenDays[0];
+    const dateStr = key.replace('denver-comments-','').replace('-','/');
+    openDayTimeline(dateStr);
+    // Mark only this day as seen by updating lastSeen to now
+    markCommentsSeen();
+  } else {
+    markCommentsSeen();
+  }
+});
 
 // === DRAG & DROP + SWIMMING PROMPT ===
 const chips = document.querySelectorAll('.activity-chip');

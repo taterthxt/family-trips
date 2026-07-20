@@ -254,9 +254,11 @@ function openTrip(url) {
 function closeTrip() {
   tripOverlay.classList.remove('visible');
   tripIframe.src = '';
-  // Re-check comments immediately when returning to landing page
-  checkTripComments('denver', 'denver-seen-comments');
-  checkTripComments('nashville', 'nashville-seen-comments');
+  // Re-check comments after a brief delay to ensure iframe localStorage writes have flushed
+  setTimeout(() => {
+    checkTripComments('denver', 'denver-seen-comments');
+    checkTripComments('nashville', 'nashville-seen-comments');
+  }, 500);
 }
 // Listen for back button clicks from inside the iframe
 window.addEventListener('message', e => { if (e.data === 'close-trip') closeTrip(); });

@@ -9,71 +9,110 @@ jobs:
   update-weather:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch weather and push to Firebase
+      - name: Fetch weather from NWS and push to Firebase
         run: |
           python3 - <<'SCRIPT'
           import json, urllib.request
 
           FB_URL = "https://family-trip---june-2026-default-rtdb.firebaseio.com/trips/denver/weather"
 
-          # Fetch Denver forecast (39.74, -104.99)
-          denver_resp = urllib.request.urlopen(
-              "https://api.open-meteo.com/v1/forecast?latitude=39.74&longitude=-104.99"
-              "&daily=temperature_2m_max,temperature_2m_min,weathercode"
-              "&temperature_unit=fahrenheit&timezone=America/Denver"
-              "&start_date=2026-07-29&end_date=2026-08-05"
-          )
-          denver_raw = json.loads(denver_resp.read())
+          # NWS forecast endpoints
+          # Denver: BOU office, grid 62,60
+          # Colorado Springs: PUB office, grid 90,91
+          DENVER_URL = "https://api.weather.gov/gridpoints/BOU/62,60/forecast"
+          SPRINGS_URL = "https://api.weather.gov/gridpoints/PUB/90,91/forecast"
 
-          # Fetch Colorado Springs forecast (38.83, -104.82)
-          springs_resp = urllib.request.urlopen(
-              "https://api.open-meteo.com/v1/forecast?latitude=38.83&longitude=-104.82"
-              "&daily=temperature_2m_max,temperature_2m_min,weathercode"
-              "&temperature_unit=fahrenheit&timezone=America/Denver"
-              "&start_date=2026-07-29&end_date=2026-08-05"
-          )
-          springs_raw = json.loads(springs_resp.read())
+          headers = {"User-Agent": "family-trip-app (github-action)"}
 
-          # WMO weather code to emoji
-          def code_to_icon(code):
-              if code in [0, 1]: return "☀️"
-              if code in [2]: return "🌤️"
-              if code in [3]: return "⛅"
-              if code in [45, 48]: return "🌫️"
-              if code in [51, 53, 55, 56, 57]: return "🌦️"
-              if code in [61, 63, 65, 66, 67, 80, 81, 82]: return "🌧️"
-              if code in [71, 73, 75, 77, 85, 86]: return "🌨️"
-              if code in [95, 96, 99]: return "⛈️"
-              return "🌤️"
+          def fetch_nws(url):
+              req = urllib.request.Request(url, headers=headers)
+              resp = urllib.request.urlopen(req)
+              data = json.loads(resp.read())
+              return data.get('properties', {}).get('periods', [])
 
-          # Date to Firebase key: 2026-07-29 -> 7-29
-          def date_to_key(d):
-              parts = d.split('-')
-              return f"{int(parts[1])}-{int(parts[2])}"
+          def desc_to_icon(desc):
+              d = desc.lower()
+              if 'thunderstorm' in d and ('likely' in d or 'showers and thunder' in d): return "⛈️"
+              if 'thunderstorm' in d or 'shower' in d: return "🌦️"
+              if 'rain' in d: return "🌧️"
+              if 'cloudy' in d and 'partly' in d: return "🌤️"
+              if 'cloudy' in d and 'mostly' in d: return "⛅"
+              if 'cloudy' in d: return "⛅"
+              if 'sunny' in d and 'mostly' in d: return "🌤️"
+              if 'sunny' in d: return "☀️"
+              if 'clear' in d: return "☀️"
+              return "�️"
 
-          # Days that show both Denver + Colorado Springs
+          # Trip date range
+          trip_dates = ['7-29', '7-30', '7-31', '8-1', '8-2', '8-3', '8-4', '8-5']
           multi_city_days = ['8-2', '8-4']
 
-          weather = {}
-          denver_daily = denver_raw.get('daily', {})
-          springs_daily = springs_raw.get('daily', {})
+          # NWS returns periods alternating day/night
+          # Parse into {date_key: {hi, lo, icon}}
+          def parse_forecast(periods):
+              forecast = {}
+              for p in periods:
+                  if not p.get('isDaytime', False):
+                      continue
+                  # Extract month/day from startTime (e.g. "2026-07-31T06:00:00-06:00")
+                  date_str = p['startTime'][:10]
+                  parts = date_str.split('-')
+                  key = f"{int(parts[1])}-{int(parts[2])}"
+                  if key not in trip_dates:
+                      continue
+                  hi = p['temperature']
+                  icon = desc_to_icon(p['shortForecast'])
+                  forecast[key] = {'hi': hi, 'icon': icon, 'desc': p['shortForecast']}
+              # Get lows from nighttime periods
+              for p in periods:
+                  if p.get('isDaytime', True):
+                      continue
+                  date_str = p['startTime'][:10]
+                  parts = date_str.split('-')
+                  key = f"{int(parts[1])}-{int(parts[2])}"
+                  if key in forecast:
+                      forecast[key]['lo'] = p['temperature']
+              return forecast
 
-          for i, date in enumerate(denver_daily.get('time', [])):
-              key = date_to_key(date)
-              d_hi = round(denver_daily['temperature_2m_max'][i])
-              d_lo = round(denver_daily['temperature_2m_min'][i])
-              d_icon = code_to_icon(denver_daily['weathercode'][i])
+          try:
+              denver_periods = fetch_nws(DENVER_URL)
+              denver_fc = parse_forecast(denver_periods)
+          except Exception as e:
+              print(f"Failed to fetch Denver: {e}")
+              denver_fc = {}
 
-              if key in multi_city_days and i < len(springs_daily.get('time', [])):
-                  s_hi = round(springs_daily['temperature_2m_max'][i])
-                  s_lo = round(springs_daily['temperature_2m_min'][i])
-                  s_icon = code_to_icon(springs_daily['weathercode'][i])
+          try:
+              springs_periods = fetch_nws(SPRINGS_URL)
+              springs_fc = parse_forecast(springs_periods)
+          except Exception as e:
+              print(f"Failed to fetch CO Springs: {e}")
+              springs_fc = {}
+
+          if not denver_fc:
+              print("No Denver data — skipping update")
+              exit(0)
+
+          # Build weather object
+          # First, get existing data to preserve past days
+          try:
+              existing_req = urllib.request.Request(f"{FB_URL}.json", headers=headers)
+              existing_resp = urllib.request.urlopen(existing_req)
+              weather = json.loads(existing_resp.read()) or {}
+          except:
+              weather = {}
+
+          # Update with fresh NWS data
+          for key, d in denver_fc.items():
+              lo = d.get('lo', 60)
+              if key in multi_city_days and key in springs_fc:
+                  s = springs_fc[key]
+                  s_lo = s.get('lo', 55)
                   weather[key] = [
-                      {"hi": d_hi, "lo": d_lo, "icon": d_icon, "loc": "Denver"},
-                      {"hi": s_hi, "lo": s_lo, "icon": s_icon, "loc": "CO Springs"}
+                      {"hi": d['hi'], "lo": lo, "icon": d['icon'], "loc": "Denver"},
+                      {"hi": s['hi'], "lo": s_lo, "icon": s['icon'], "loc": "CO Springs"}
                   ]
               else:
-                  weather[key] = {"hi": d_hi, "lo": d_lo, "icon": d_icon, "loc": "Denver"}
+                  weather[key] = {"hi": d['hi'], "lo": lo, "icon": d['icon'], "loc": "Denver"}
 
           # Push to Firebase
           data = json.dumps(weather).encode()
@@ -83,8 +122,8 @@ jobs:
               headers={'Content-Type': 'application/json'},
               method='PUT'
           )
-          resp = urllib.request.urlopen(req)
-          print(f"✓ Weather updated successfully")
+          urllib.request.urlopen(req)
+          print("✓ Weather updated from NWS")
           for k, v in sorted(weather.items()):
               print(f"  {k}: {v}")
           SCRIPT

@@ -271,6 +271,33 @@ body {
   .day-picker .day-option { padding:12px 14px; font-size:13px; }
   .day-picker .cancel-btn { padding:12px; font-size:13px; }
 }
+
+/* Mobile Landscape — keep calendar grid but fit to screen */
+@media (max-height: 500px) and (orientation: landscape) {
+  body { padding: 4px; font-size: 9px; }
+  .header { margin-bottom: 2px; min-height: 30px; }
+  .header-center h1 { font-size: 13px; }
+  .header-center .subtitle { font-size: 8px; }
+  .header-right { font-size: 8px; }
+  .progress-wrapper { margin-bottom: 4px; }
+  .progress-track { height: 10px; }
+  .progress-star { font-size: 12px; }
+  .legend { margin: 4px 0; font-size: 7px; gap: 8px; }
+  .cal-grid { max-width: 100%; }
+  .cal-cell { min-height: 80px; padding: 3px; gap: 1px; }
+  .cal-cell .date-num { font-size: 9px; margin-bottom: 1px; }
+  .cal-cell .weather-line { font-size: 6px; }
+  .cal-cell .rental-badge { font-size: 6px; }
+  .avail-row { margin-bottom: 1px; }
+  .avail-pip { font-size: 6px; }
+  .ev { font-size: 7px; padding: 2px 3px; }
+  .cal-header { font-size: 8px; padding: 3px 0; }
+  .potential-activities { margin-top: 6px; padding: 6px 8px; }
+  .potential-activities h3 { font-size: 8px; }
+  .activity-chip { font-size: 8px; padding: 2px 6px; }
+  .detail-panel { width: 50vw; }
+  .main-content.panel-open { transform: translateX(-25vw); }
+}
 </style>
 
 <!-- Legend -->

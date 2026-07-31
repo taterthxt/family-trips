@@ -272,6 +272,35 @@ body {
   .day-picker .day-option { padding:12px 14px; font-size:13px; }
   .day-picker .cancel-btn { padding:12px; font-size:13px; }
 }
+
+/* Mobile Landscape — keep calendar grid but fit to screen */
+@media (max-height: 500px) and (orientation: landscape) {
+  body { padding: 4px; font-size: 9px; }
+  .back-btn { top: 4px; left: 4px; font-size: 9px; padding: 3px 8px; }
+  .header { margin-bottom: 2px; min-height: 30px; margin-top: 20px; }
+  .header-center h1 { font-size: 13px; }
+  .header-center .subtitle { font-size: 8px; }
+  .header-right { font-size: 8px; }
+  .progress-wrapper { margin-bottom: 4px; }
+  .progress-track { height: 10px; }
+  .progress-star { font-size: 12px; }
+  .legend { margin: 4px 0; font-size: 7px; gap: 8px; }
+  .cal-grid { max-width: 100%; }
+  .cal-cell { min-height: 80px; padding: 3px; gap: 1px; }
+  .cal-cell .date-num { font-size: 9px; margin-bottom: 1px; }
+  .cal-cell .weather-line { font-size: 6px; }
+  .cal-cell .rental-badge { font-size: 6px; }
+  .cal-cell .bomb-badge { font-size: 6px; }
+  .avail-row { margin-bottom: 1px; }
+  .avail-pip { font-size: 6px; }
+  .ev { font-size: 7px; padding: 2px 3px; }
+  .cal-header { font-size: 8px; padding: 3px 0; }
+  .potential-activities { margin-top: 6px; padding: 6px 8px; }
+  .potential-activities h3 { font-size: 8px; }
+  .activity-chip { font-size: 8px; padding: 2px 6px; }
+  .detail-panel { width: 50vw; }
+  .main-content.panel-open { transform: translateX(-25vw); }
+}
 </style>
 
 <!-- Legend -->
@@ -351,6 +380,16 @@ function getMapsUrl(url) {
   }
   return url;
 }
+function formatWeather(w) {
+  if (!w) return '—';
+  if (Array.isArray(w)) return w.map(wx => `${wx.icon} ${wx.hi}°/${wx.lo}° • ${wx.loc}`).join(' | ');
+  return `${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}`;
+}
+function formatWeatherShort(w) {
+  if (!w) return '';
+  if (Array.isArray(w)) return w[0].icon + ' ' + w[0].hi + '°';
+  return w.icon + ' ' + w.hi + '°';
+}
 
 // === DATA ===
 const everyone = ['Christian','Jesse','Kenzie','Ben','Ace','Sofia'];
@@ -425,7 +464,14 @@ function buildCalendar() {
     const w = weather[dateStr];
     const rental = rentalDates.includes(dateStr) ? '<span class="rental-badge">🚗</span>' : '';
     const bomb = bombDates.includes(dateStr) ? '<span class="bomb-badge">💣</span>' : '';
-    const weatherLine = w ? `<div class="weather-line">${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}</div>` : '';
+    let weatherLine = '';
+    if (w) {
+      if (Array.isArray(w)) {
+        weatherLine = w.map(wx => `<div class="weather-line">${wx.icon} ${wx.hi}°/${wx.lo}° • ${wx.loc}</div>`).join('');
+      } else {
+        weatherLine = `<div class="weather-line">${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}</div>`;
+      }
+    }
 
     let availHtml = '';
     const hasWork = (workSchedules['Christian']||[]).some(s => s.d === dateStr);
@@ -499,7 +545,7 @@ function openEventPanel(dateStr, idx) {
   panelContent.innerHTML = `
     <h2>${ev.title}</h2>
     <h3>Time</h3><p>${ev.time}</p>
-    <h3>Weather</h3><p>${w?`${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}`:'—'}</p>
+    <h3>Weather</h3><p>${formatWeather(w)}</p>
     ${locationHtml}
     ${driveHtml}
     <h3>Who</h3><p>${ev.who.length===everyone.length?'Everyone':ev.who.join(', ')}</p>
@@ -592,7 +638,7 @@ function openDayTimeline(dateStr) {
   const totalHeight = (endHour - startHour) * hourHeight;
   let html = `
     <div class="timeline">
-      <div class="timeline-header"><span class="tl-date">${month} ${dayNum}</span><span class="tl-weather">${w ? `${w.icon} ${w.hi}°/${w.lo}° • ${w.loc}` : ''}</span></div>
+      <div class="timeline-header"><span class="tl-date">${month} ${dayNum}</span><span class="tl-weather">${formatWeather(w)}</span></div>
       <div class="timeline-legend">
         ${everyone.map(p => `<div class="timeline-legend-item"><div class="timeline-legend-swatch" style="background:${personColors[p]}"></div>${p[0]}</div>`).join('')}
         <div class="timeline-legend-item"><div class="timeline-legend-swatch" style="background:#d29922"></div>Work</div>
@@ -915,7 +961,7 @@ function openDayPicker(act) {
     const w=weather[d];
     const o=document.createElement('div');
     o.className='day-option';
-    o.innerHTML=`<span>${d}</span><span>${w?w.icon+' '+w.hi+'°':''}</span>`;
+    o.innerHTML=`<span>${d}</span><span>${formatWeatherShort(w)}</span>`;
     o.addEventListener('click',()=>{
       const cell=document.querySelector(`.cal-cell[data-date="${d}"]`);
       if(cell){

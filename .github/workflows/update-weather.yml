@@ -41,7 +41,7 @@ jobs:
               if 'sunny' in d and 'mostly' in d: return "🌤️"
               if 'sunny' in d: return "☀️"
               if 'clear' in d: return "☀️"
-              return "�️"
+              return "🌤️"
 
           # Trip date range
           trip_dates = ['7-29', '7-30', '7-31', '8-1', '8-2', '8-3', '8-4', '8-5']

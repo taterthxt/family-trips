@@ -1,0 +1,90 @@
+name: Update Weather
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Every hour
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+jobs:
+  update-weather:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch weather and push to Firebase
+        run: |
+          python3 - <<'SCRIPT'
+          import json, urllib.request
+
+          FB_URL = "https://family-trip---june-2026-default-rtdb.firebaseio.com/trips/denver/weather"
+
+          # Fetch Denver forecast (39.74, -104.99)
+          denver_resp = urllib.request.urlopen(
+              "https://api.open-meteo.com/v1/forecast?latitude=39.74&longitude=-104.99"
+              "&daily=temperature_2m_max,temperature_2m_min,weathercode"
+              "&temperature_unit=fahrenheit&timezone=America/Denver"
+              "&start_date=2026-07-29&end_date=2026-08-05"
+          )
+          denver_raw = json.loads(denver_resp.read())
+
+          # Fetch Colorado Springs forecast (38.83, -104.82)
+          springs_resp = urllib.request.urlopen(
+              "https://api.open-meteo.com/v1/forecast?latitude=38.83&longitude=-104.82"
+              "&daily=temperature_2m_max,temperature_2m_min,weathercode"
+              "&temperature_unit=fahrenheit&timezone=America/Denver"
+              "&start_date=2026-07-29&end_date=2026-08-05"
+          )
+          springs_raw = json.loads(springs_resp.read())
+
+          # WMO weather code to emoji
+          def code_to_icon(code):
+              if code in [0, 1]: return "☀️"
+              if code in [2]: return "🌤️"
+              if code in [3]: return "⛅"
+              if code in [45, 48]: return "🌫️"
+              if code in [51, 53, 55, 56, 57]: return "🌦️"
+              if code in [61, 63, 65, 66, 67, 80, 81, 82]: return "🌧️"
+              if code in [71, 73, 75, 77, 85, 86]: return "🌨️"
+              if code in [95, 96, 99]: return "⛈️"
+              return "🌤️"
+
+          # Date to Firebase key: 2026-07-29 -> 7-29
+          def date_to_key(d):
+              parts = d.split('-')
+              return f"{int(parts[1])}-{int(parts[2])}"
+
+          # Days that show both Denver + Colorado Springs
+          multi_city_days = ['8-2', '8-4']
+
+          weather = {}
+          denver_daily = denver_raw.get('daily', {})
+          springs_daily = springs_raw.get('daily', {})
+
+          for i, date in enumerate(denver_daily.get('time', [])):
+              key = date_to_key(date)
+              d_hi = round(denver_daily['temperature_2m_max'][i])
+              d_lo = round(denver_daily['temperature_2m_min'][i])
+              d_icon = code_to_icon(denver_daily['weathercode'][i])
+
+              if key in multi_city_days and i < len(springs_daily.get('time', [])):
+                  s_hi = round(springs_daily['temperature_2m_max'][i])
+                  s_lo = round(springs_daily['temperature_2m_min'][i])
+                  s_icon = code_to_icon(springs_daily['weathercode'][i])
+                  weather[key] = [
+                      {"hi": d_hi, "lo": d_lo, "icon": d_icon, "loc": "Denver"},
+                      {"hi": s_hi, "lo": s_lo, "icon": s_icon, "loc": "CO Springs"}
+                  ]
+              else:
+                  weather[key] = {"hi": d_hi, "lo": d_lo, "icon": d_icon, "loc": "Denver"}
+
+          # Push to Firebase
+          data = json.dumps(weather).encode()
+          req = urllib.request.Request(
+              f"{FB_URL}.json",
+              data=data,
+              headers={'Content-Type': 'application/json'},
+              method='PUT'
+          )
+          resp = urllib.request.urlopen(req)
+          print(f"✓ Weather updated successfully")
+          for k, v in sorted(weather.items()):
+              print(f"  {k}: {v}")
+          SCRIPT

@@ -32,16 +32,20 @@ jobs:
 
           def desc_to_icon(desc):
               d = desc.lower()
-              if 'thunderstorm' in d and ('likely' in d or 'showers and thunder' in d): return "⛈️"
-              if 'thunderstorm' in d or 'shower' in d: return "🌦️"
-              if 'rain' in d: return "🌧️"
-              if 'cloudy' in d and 'partly' in d: return "🌤️"
-              if 'cloudy' in d and 'mostly' in d: return "⛅"
-              if 'cloudy' in d: return "⛅"
-              if 'sunny' in d and 'mostly' in d: return "🌤️"
-              if 'sunny' in d: return "☀️"
-              if 'clear' in d: return "☀️"
-              return "🌤️"
+              # Only use storm icon when storms are the primary forecast
+              if 'thunderstorm' in d and ('likely' in d or 'showers and thunderstorms' == d): return "\u26c8\ufe0f"
+              # "Sunny then chance storms" = still primarily sunny
+              if ('chance' in d or 'slight' in d) and 'sunny' in d: return "\u2600\ufe0f"
+              if ('chance' in d or 'slight' in d) and ('thunderstorm' in d or 'shower' in d): return "\U0001f326\ufe0f"
+              if 'thunderstorm' in d or 'shower' in d: return "\U0001f326\ufe0f"
+              if 'rain' in d: return "\U0001f327\ufe0f"
+              if 'cloudy' in d and 'partly' in d: return "\U0001f324\ufe0f"
+              if 'cloudy' in d and 'mostly' in d: return "\u26c5"
+              if 'cloudy' in d: return "\u26c5"
+              if 'sunny' in d and 'mostly' in d: return "\U0001f324\ufe0f"
+              if 'sunny' in d: return "\u2600\ufe0f"
+              if 'clear' in d: return "\u2600\ufe0f"
+              return "\U0001f324\ufe0f"
 
           # Trip date range
           trip_dates = ['7-29', '7-30', '7-31', '8-1', '8-2', '8-3', '8-4', '8-5']
@@ -89,7 +93,7 @@ jobs:
               springs_fc = {}
 
           if not denver_fc:
-              print("No Denver data — skipping update")
+              print("No Denver data - skipping update")
               exit(0)
 
           # Build weather object
@@ -123,7 +127,7 @@ jobs:
               method='PUT'
           )
           urllib.request.urlopen(req)
-          print("✓ Weather updated from NWS")
+          print("Weather updated from NWS")
           for k, v in sorted(weather.items()):
               print(f"  {k}: {v}")
           SCRIPT
